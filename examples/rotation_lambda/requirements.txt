@@ -1,0 +1,11 @@
+# Python dependencies for secrets manager rotation Lambda
+# 
+# Note: boto3 is bundled with AWS Lambda runtime.
+# Only psycopg2 needs to be packaged in a Lambda layer or zip.
+# 
+# To create a Lambda layer with dependencies:
+#   pip install -r requirements.txt -t layer/python
+#   zip -r layer.zip layer/
+#   aws lambda publish-layer-version --zip-file fileb://layer.zip ...
+
+psycopg2-binary==2.9.9

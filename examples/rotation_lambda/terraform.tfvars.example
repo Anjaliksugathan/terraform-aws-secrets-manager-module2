@@ -1,0 +1,32 @@
+# Example Terraform variables for rotation Lambda setup
+# 
+# Copy to terraform.tfvars and fill in your actual values
+# DO NOT COMMIT terraform.tfvars to Git
+# 
+# Usage:
+#   cp terraform.tfvars.example terraform.tfvars
+#   # Edit terraform.tfvars with real values
+#   terraform apply -var-file=terraform.tfvars
+
+aws_region   = "eu-west-1"
+environment  = "prod"
+secret_name  = "shared/platform/postgres/credentials"
+
+# Database connection details
+db_host     = "postgres.example.com"
+db_port     = 5432
+db_name     = "application_db"
+
+# These should be injected from GitHub Actions secrets or environment variables
+# Never commit actual values!
+# 
+# Example CI/CD injection:
+#   export TF_VAR_db_username="admin"
+#   export TF_VAR_db_password="your-secure-password"
+#   terraform apply
+#
+# db_username = "admin"
+# db_password = "your-secure-password"
+
+# Optional: Use customer-managed KMS key
+# kms_key_id = "arn:aws:kms:eu-west-1:123456789012:key/12345678-1234-1234-1234-123456789012"
