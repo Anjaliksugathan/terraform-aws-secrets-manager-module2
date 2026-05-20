@@ -12,12 +12,17 @@ resource "aws_secretsmanager_secret" "this" {
     }
   }
 
-  tags = local.common_tags
+  tags = merge(
+    local.common_tags,
+    {
+      Source = local.source_type
+    }
+  )
 }
 
 resource "aws_secretsmanager_secret_version" "this" {
   secret_id     = aws_secretsmanager_secret.this.id
-  secret_string = jsonencode(var.secret_values)
+  secret_string = jsonencode(local.final_secrets)
 
   lifecycle {
     ignore_changes = [

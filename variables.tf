@@ -21,9 +21,17 @@ variable "kms_key_id" {
 }
 
 variable "secret_values" {
-  description = "Secret key/value pairs"
+  description = "Secret key/value pairs (ignored if using Vault/KeyVault)"
   type        = map(string)
   sensitive   = true
+  default     = {}
+}
+
+variable "secret_overrides" {
+  description = "Additional secrets to merge with Vault/KeyVault secrets"
+  type        = map(string)
+  sensitive   = true
+  default     = {}
 }
 
 variable "recovery_window_in_days" {
@@ -71,4 +79,67 @@ variable "tags" {
   description = "Tags applied to resources"
   type        = map(string)
   default     = {}
+}
+
+# ============================================================================
+# Vault Integration Variables
+# ============================================================================
+
+variable "use_vault_source" {
+  description = "Enable HashiCorp Vault as the secret source"
+  type        = bool
+  default     = false
+}
+
+variable "vault_addr" {
+  description = "Vault server address (or use VAULT_ADDR environment variable)"
+  type        = string
+  default     = ""
+  sensitive   = false
+}
+
+variable "vault_token" {
+  description = "Vault authentication token (or use VAULT_TOKEN environment variable)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "vault_secret_path" {
+  description = "Path to the secret in Vault (e.g., 'secret/data/prod/postgres' for KV v2 or 'secret/prod/postgres' for KV v1)"
+  type        = string
+  default     = ""
+}
+
+variable "vault_kv_version" {
+  description = "Vault KV engine version (1 or 2)"
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.vault_kv_version == 1 || var.vault_kv_version == 2
+    error_message = "vault_kv_version must be either 1 or 2."
+  }
+}
+
+# ============================================================================
+# Azure Key Vault Integration Variables
+# ============================================================================
+
+variable "use_azure_keyvault_source" {
+  description = "Enable Azure Key Vault as the secret source"
+  type        = bool
+  default     = false
+}
+
+variable "azure_keyvault_id" {
+  description = "Azure Key Vault resource ID"
+  type        = string
+  default     = ""
+}
+
+variable "azure_keyvault_secret_name" {
+  description = "Name of the secret in Azure Key Vault"
+  type        = string
+  default     = ""
 }
