@@ -45,13 +45,13 @@ Platform teams need a way to provision AWS Secrets Manager infrastructure while 
 ## Module Goals
 
 Provide a **reusable, secure abstraction** that:
-- ✅ Provisions only infrastructure (containers, encryption, policies)
-- ✅ Keeps ALL secrets out of Terraform state
-- ✅ Supports multi-region replication
-- ✅ Enforces KMS encryption
-- ✅ Provides fine-grained IAM/resource policies
-- ✅ Enables external rotation without Terraform
-- ✅ Maintains compliance standards
+- Provisions only infrastructure (containers, encryption, policies)
+- Keeps ALL secrets out of Terraform state
+- Supports multi-region replication
+- Enforces KMS encryption
+- Provides fine-grained IAM/resource policies
+- Enables external rotation without Terraform
+- Maintains compliance standards
 
 ## Features
 
@@ -305,14 +305,14 @@ const dbConfig = JSON.parse(secret.SecretString);
 
 ## Security Considerations
 
-### ✅ What This Module PREVENTS
+### What This Module PREVENTS
 
-- ✅ Secrets in Terraform state
-- ✅ Secrets in `terraform apply` logs
-- ✅ Secrets in Terraform plan output
-- ✅ Unencrypted secrets in AWS Secrets Manager
+- Secrets in Terraform state
+- Secrets in `terraform apply` logs
+- Secrets in Terraform plan output
+- Unencrypted secrets in AWS Secrets Manager
 
-### ✅ Best Practices Implemented
+### Best Practices Implemented
 
 1. **Encrypted remote state** — Still use S3 + KMS even though no secrets present
 2. **State locking** — Use DynamoDB to prevent concurrent applies
