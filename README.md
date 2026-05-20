@@ -7,11 +7,11 @@ This module is intended as a reusable Terraform building block for shared AWS en
 
 Platform teams often face inconsistent secret management across infrastructure:
 
-Product teams use raw `aws_secretsmanager_secret` resources directly
-No consistent encryption, recovery windows, or access policies
-Manual IAM policy management for each secret
-Duplicated configuration across multiple services
-Difficult to enforce audit trails or rotation policies
+* Product teams use raw `aws_secretsmanager_secret` resources directly
+* No consistent encryption, recovery windows, or access policies
+* Manual IAM policy management for each secret
+* Duplicated configuration across multiple services
+* Difficult to enforce audit trails or rotation policies
 
 ## Module Goals
 
@@ -54,6 +54,10 @@ module "app_secret" {
   }
 }
 ```
+Warning:
+Terraform may process and store secret values in state when using direct input mode. This approach should only be used for bootstrap or migration scenarios.
+
+For shared platform environments, external secret sources such as HashiCorp Vault are recommended.
 
 ### Option 2: HashiCorp Vault Integration
 
