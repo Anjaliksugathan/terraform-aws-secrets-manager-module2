@@ -1,0 +1,14 @@
+# Vault Integration Example - terraform.tfvars.example
+
+aws_region = "eu-west-1"
+environment = "prod"
+
+# Vault configuration (these can also be set via environment variables)
+# VAULT_ADDR and VAULT_TOKEN can be exported instead of passing here
+vault_addr = "https://vault.example.com:8200"
+# vault_token = "hvs.xxxxx"  # NEVER commit this! Use environment variable instead
+
+kms_key_id = null  # Optional: use AWS-managed key by default
+
+enable_rotation = false
+# rotation_lambda_arn = "arn:aws:lambda:eu-west-1:123456789:function:rotate-secret"
