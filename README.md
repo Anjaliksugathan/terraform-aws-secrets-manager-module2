@@ -1,32 +1,33 @@
 # Terraform AWS Secrets Manager Module
 
 Reusable Terraform module for securely managing AWS Secrets Manager secrets in shared platform environments.
+This module is intended as a reusable Terraform building block for shared AWS environments managed by infrastructure/platform engineering teams.
 
 ## Problem Statement
 
 Platform teams often face inconsistent secret management across infrastructure:
 
-❌ Product teams use raw `aws_secretsmanager_secret` resources directly
-❌ No consistent encryption, recovery windows, or access policies
-❌ Manual IAM policy management for each secret
-❌ Duplicated configuration across multiple services
-❌ Difficult to enforce audit trails or rotation policies
+Product teams use raw `aws_secretsmanager_secret` resources directly
+No consistent encryption, recovery windows, or access policies
+Manual IAM policy management for each secret
+Duplicated configuration across multiple services
+Difficult to enforce audit trails or rotation policies
 
 ## Module Goals
 
 Provide a **reusable abstraction** that enforces:
-- ✅ Secure defaults (KMS encryption, 7-day recovery window)
-- ✅ Consistent IAM policies and resource access control
-- ✅ Optional secret sourcing from external vaults (Vault, KeyVault)
-- ✅ Multi-region replication for disaster recovery
-- ✅ Optional Lambda-based rotation support
-- ✅ Centralized standards without limiting flexibility
+- Secure defaults (KMS encryption, 7-day recovery window)
+- Consistent IAM policies and resource access control
+- Optional secret sourcing from external vaults (Vault, KeyVault)
+- Multi-region replication for disaster recovery
+- Optional Lambda-based rotation support
+- Centralized standards without limiting flexibility
 
 ## Features
 
 - **Secure defaults** — KMS encryption, 7-day recovery window
 - **Flexible secret sources** — Direct input or HashiCorp Vault integration
-- **Provisioning-time injection** — Fetch and inject secrets from Vault in a single `terraform apply`
+- **Provisioning-time injection** — Retrieve secrets from Vault during terraform apply
 - **Resource policies** — Cross-account and fine-grained access control
 - **Replica region support** — Multi-region disaster recovery
 - **Optional rotation** — External Lambda-based rotation protocol
@@ -90,13 +91,13 @@ See `examples/vault-integration/` for detailed setup.
 ## Architecture
 
 ```
-Vault / Direct Input
-        ↓
-   Terraform Module
-        ↓
-AWS Secrets Manager (encrypted with KMS)
-        ↓
-Application (via IAM or resource policy)
+External Secret Source (Vault / Direct Input)
+                    ↓
+            Terraform Module
+                    ↓
+ AWS Secrets Manager (KMS encrypted)
+                    ↓
+ Applications / Services (IAM-controlled access)
 ```
 
 The module acts as a **control point** for secret provisioning:
@@ -125,7 +126,7 @@ When using **direct input**, Terraform processes secret values during `terraform
 1. **Use encrypted remote state** — S3 + KMS with bucket versioning
 2. **Enable state locking** — DynamoDB for concurrent access control
 3. **Restrict IAM access** — Only allow platform team to read state
-4. **Never commit `.tfvars` files** — Use environment variables or Terraform Cloud
+4. **Never commit `.tfvars` files containing secrets
 5. **Enable Vault audit logging** — Track all secret access (if using Vault)
 
 ## Rotation Support
@@ -184,7 +185,7 @@ module "db_secret" {
 | `secret_version_id` | Current version ID of the secret |
 | `source_type` | Source of secrets (`vault`, or `direct`) |
 
-## Design Decisions
+## Architectural Decisions & Tradeoffs
 
 **Why is Vault integration optional?**
 - Not all organizations have Vault. Direct input supports teams still maturing their secret management.
