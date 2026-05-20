@@ -1,71 +1,41 @@
-````markdown
 # Terraform AWS Secrets Manager Module
 
-**Infrastructure-only Terraform module** for AWS Secrets Manager secret container provisioning. Secret values are injected externally, ensuring **zero secrets in Terraform state**.
-
-## Philosophy
-
-This module enforces a **security-first principle**: Terraform provisions only infrastructure containers and policies—**application secrets are injected and managed by AWS Secrets Manager exclusively**.
-
-### Why This Approach?
-
-**Traditional Approach (Anti-pattern):**
-```
-Terraform processes secrets
-    ↓
-Terraform state contains secrets
-    ↓
-Risk: State exposure = secret exposure
-```
-
-**This Module's Approach (Production-Ready):**
-```
-Terraform
-    ↓
-Creates only secret container + IAM + KMS
-    (NO SECRET VALUES)
-    ↓
-External system injects secrets directly
-    ↓
-Applications retrieve from AWS Secrets Manager
-    ↓
-Result: Zero secrets in Terraform state
-```
+Reusable Terraform module for securely managing AWS Secrets Manager secrets in shared platform environments. This module is intended as a reusable Terraform building block for shared AWS environments managed by infrastructure/platform engineering teams.
 
 ## Problem Statement
 
-Platform teams need a way to provision AWS Secrets Manager infrastructure while keeping application secrets completely separate from Terraform:
+Platform teams often face inconsistent secret management across infrastructure:
 
-- Infrastructure teams manage containers and policies
-- Security teams or automation manage secret values
-- Terraform state remains free of sensitive data
-- Secrets can be rotated without Terraform involvement
-- Clear separation of concerns
+- Product teams use raw `aws_secretsmanager_secret` resources directly
+- No consistent encryption, recovery windows, or access policies
+- Manual IAM policy management for each secret
+- Duplicated configuration across multiple services
+- Difficult to enforce audit trails or rotation policies
 
-## Module Goals
+## Solution
 
-Provide a **reusable, secure abstraction** that:
+This module provides a **simple, reusable abstraction** that:
 - Provisions only infrastructure (containers, encryption, policies)
-- Keeps ALL secrets out of Terraform state
+- Keeps ALL secrets out of Terraform state (zero-secrets architecture)
 - Supports multi-region replication
 - Enforces KMS encryption
-- Provides fine-grained IAM/resource policies
-- Enables external rotation without Terraform
+- Provides fine-grained IAM and resource-based policies
+- Enables external secret rotation without Terraform involvement
 - Maintains compliance standards
 
-## Features
+## Key Features
 
-- **Zero-secrets architecture** — No secret values in Terraform state or logs
-- **KMS encryption** — Optional customer-managed keys
-- **Multi-region replication** — Disaster recovery support
-- **Resource policies** — Cross-account and fine-grained access control
-- **Automatic rotation** — Lambda-based external rotation
-- **Recovery window** — Safe deletion window (7-30 days)
-- **Simple outputs** — ARN, name, region info (no secrets)
+✅ **Zero-secrets architecture** — No secret values in Terraform state or logs  
+✅ **KMS encryption** — AWS-managed or customer-managed keys  
+✅ **Multi-region replication** — Disaster recovery support  
+✅ **Resource policies** — Cross-account and fine-grained access control  
+✅ **Automatic rotation** — Lambda-based external rotation  
+✅ **Safe deletion** — Recovery window (7-30 days)  
+✅ **Simple outputs** — ARN, name, region info (no secrets)  
 
-## Usage
+## Quick Start
 
-### Basic Example: Provision Secret Container
+### Step 1: Create Secret Container (Terraform)
 
 ```hcl
 module "app_secret" {
@@ -87,14 +57,12 @@ module "app_secret" {
   }
 }
 
-# Output: Secret ARN and name for applications to use
 output "db_secret_arn" {
   value = module.app_secret.secret_arn
 }
 ```
 
-### Step 1: Deploy with Terraform
-
+Deploy with Terraform:
 ```bash
 terraform init
 terraform plan
@@ -107,20 +75,18 @@ terraform apply
 
 Use **any** of these methods:
 
-#### Option A: AWS CLI (Manual)
+#### AWS CLI (Manual)
 ```bash
 aws secretsmanager put-secret-value \
   --secret-id shared/platform/app/db \
   --secret-string '{"username":"admin","password":"secure-pass"}'
 ```
 
-#### Option B: Lambda Function
+#### Lambda Function
 ```python
-import boto3
-import json
+import boto3, json
 
 sm = boto3.client('secretsmanager')
-
 secret = {
     "username": "postgres_user",
     "password": "generated-secure-password",
@@ -134,26 +100,21 @@ sm.put_secret_value(
 )
 ```
 
-#### Option C: CI/CD Pipeline (GitHub Actions)
+#### CI/CD Pipeline (GitHub Actions)
 ```yaml
 name: Inject Secrets
-
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * 0"  # Weekly
+on: [workflow_dispatch]
 
 jobs:
   inject:
     runs-on: ubuntu-latest
     steps:
-      - name: Inject secrets to AWS Secrets Manager
+      - name: Inject secrets
         env:
           AWS_REGION: eu-west-1
-          SECRET_ID: shared/platform/app/db
         run: |
           aws secretsmanager put-secret-value \
-            --secret-id $SECRET_ID \
+            --secret-id shared/platform/app/db \
             --region $AWS_REGION \
             --secret-string '{
               "username":"admin",
@@ -162,18 +123,8 @@ jobs:
             }'
 ```
 
-#### Option D: Kubernetes Secret Operator
+#### Kubernetes External Secrets
 ```yaml
-apiVersion: external-secrets.io/v1beta1
-kind: SecretStore
-metadata:
-  name: aws-sm
-spec:
-  provider:
-    aws:
-      service: SecretsManager
-      region: eu-west-1
----
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -185,7 +136,6 @@ spec:
     kind: SecretStore
   target:
     name: app-db
-    creationPolicy: Owner
   data:
     - secretKey: username
       remoteRef:
@@ -197,7 +147,7 @@ spec:
 
 **Python:**
 ```python
-import boto3
+import boto3, json
 
 sm = boto3.client('secretsmanager')
 secret = sm.get_secret_value(SecretId='shared/platform/app/db')
@@ -212,20 +162,16 @@ db = psycopg2.connect(
 
 **Go:**
 ```go
-import "github.com/aws/aws-sdk-go/service/secretsmanager"
-
 svc := secretsmanager.New(sess)
-input := &secretsmanager.GetSecretValueInput{
+result, _ := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
     SecretId: aws.String("shared/platform/app/db"),
-}
-result, _ := svc.GetSecretValue(input)
+})
 var dbConfig map[string]string
 json.Unmarshal([]byte(*result.SecretString), &dbConfig)
 ```
 
 **Node.js:**
 ```javascript
-const AWS = require('aws-sdk');
 const sm = new AWS.SecretsManager();
 
 const secret = await sm.getSecretValue({
@@ -233,49 +179,6 @@ const secret = await sm.getSecretValue({
 }).promise();
 
 const dbConfig = JSON.parse(secret.SecretString);
-```
-
-## Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────┐
-│         Infrastructure Setup (Terraform)             │
-├─────────────────────────────────────────────────────┤
-│  • aws_secretsmanager_secret (empty container)      │
-│  • KMS key (optional)                               │
-│  • Resource policies (cross-account access)         │
-│  • Rotation configuration (optional Lambda)         │
-│  • Multi-region replication                         │
-└────────────────┬──────────────────────────────────┘
-                 │
-                 ↓
-    ┌────────────────────────────────┐
-    │  AWS Secrets Manager (Empty)   │
-    │  arn:aws:secretsmanager:...    │
-    └────────────────┬───────────────┘
-                     │
-    ┌────────────────┴───────────────┐
-    │                                 │
-    ↓                                 ↓
-┌─────────────────┐        ┌──────────────────┐
-│   CI/CD Pipe    │        │  Lambda/ETL Job  │
-│  (Inject via    │        │  (Fetch from     │
-│  GitHub Actions │        │   source system) │
-│   AWS CLI)      │        └──────────────────┘
-└─────────────────┘
-    │                                 │
-    └────────────────┬────────────────┘
-                     ↓
-    ┌────────────────────────────────┐
-    │  AWS Secrets Manager (Populated)│
-    │  Secret Value: JSON            │
-    └────────────────┬───────────────┘
-                     │
-                     ↓
-    ┌────────────────────────────────┐
-    │      Applications / Services    │
-    │  (Retrieve via IAM permissions) │
-    └────────────────────────────────┘
 ```
 
 ## Module Inputs
@@ -289,7 +192,7 @@ const dbConfig = JSON.parse(secret.SecretString);
 | `enable_rotation` | bool | `false` | No | Enable automatic rotation |
 | `rotation_lambda_arn` | string | `null` | No | Lambda ARN for rotation |
 | `rotation_days` | number | `30` | No | Rotation interval in days |
-| `replica_regions` | list(string) | `[]` | No | Regions to replicate secret to (max 1) |
+| `replica_regions` | list(string) | `[]` | No | Regions to replicate secret to |
 | `resource_policy` | string | `null` | No | JSON resource policy for cross-account access |
 | `tags` | map(string) | `{}` | No | Tags for all resources |
 
@@ -307,29 +210,19 @@ const dbConfig = JSON.parse(secret.SecretString);
 
 ### What This Module PREVENTS
 
-- Secrets in Terraform state
-- Secrets in `terraform apply` logs
-- Secrets in Terraform plan output
-- Unencrypted secrets in AWS Secrets Manager
+- ❌ Secrets in Terraform state
+- ❌ Secrets in `terraform apply` logs
+- ❌ Secrets in Terraform plan output
+- ❌ Unencrypted secrets in AWS Secrets Manager
 
 ### Best Practices Implemented
 
-1. **Encrypted remote state** — Still use S3 + KMS even though no secrets present
+1. **Encrypted remote state** — Use S3 + KMS even though no secrets present
 2. **State locking** — Use DynamoDB to prevent concurrent applies
 3. **IAM access control** — Restrict who can read secret containers
 4. **KMS encryption** — Optional customer-managed keys
 5. **Resource policies** — Fine-grained cross-account access
 6. **Audit logging** — CloudTrail logs all secret access
-
-### External Secret Injection Guidelines
-
-| Method | Best For | Security | Complexity |
-|--------|----------|----------|-----------|
-| **AWS CLI (manual)** | Bootstrap, testing | Low | Low |
-| **Lambda function** | Scheduled rotation | High | Medium |
-| **CI/CD pipeline** | Deployment-time secrets | High | Medium |
-| **External secrets operator** | Kubernetes/container | High | High |
-| **CloudFormation custom resources** | IaC integration | Medium | High |
 
 ## Examples
 
@@ -343,7 +236,6 @@ const dbConfig = JSON.parse(secret.SecretString);
 ```bash
 # Validate configuration
 terraform validate
-terraform fmt -check
 
 # Plan infrastructure
 terraform plan
@@ -351,41 +243,42 @@ terraform plan
 # Deploy container
 terraform apply
 
-# Manually inject a secret (example)
+# Inject a secret (example)
 aws secretsmanager put-secret-value \
   --secret-id $(terraform output -raw secret_name) \
   --secret-string '{"test":"value"}'
 
-# Verify secret exists (value not visible by default)
+# Verify secret exists
 aws secretsmanager describe-secret \
   --secret-id $(terraform output -raw secret_name)
 ```
 
 ## Migration Guide
 
-If migrating from a **secret-handling module** (e.g., Vault integration):
+If migrating from another secret-handling system:
 
-1. **Export existing secrets** from old source
-   ```bash
-   # From Vault
-   vault kv get -format=json secret/prod/db > secrets.json
-   ```
-
+1. **Export existing secrets**
 2. **Deploy this module** for infrastructure
-   ```bash
-   terraform apply
-   ```
-
 3. **Inject secrets** using external tool
-   ```bash
-   aws secretsmanager put-secret-value \
-     --secret-id shared/platform/db \
-     --secret-string "$(cat secrets.json | jq -r '.data.data | tojsonstream')"
-   ```
+4. **Update applications** to retrieve from AWS Secrets Manager
+5. **Clean up** old infrastructure
 
-4. **Update applications** to retrieve from AWS Secrets Manager instead of old source
+## FAQ
 
-5. **Clean up** old infrastructure (remove Vault secret data source, etc.)
+**Q: How do I deploy without manually running AWS CLI?**  
+A: Use a Lambda function, CI/CD pipeline, or Kubernetes operator (see examples above).
+
+**Q: What if I need secrets at `terraform apply` time?**  
+A: This module doesn't support that. Use a separate, temporary secret-injection step after `terraform apply`.
+
+**Q: Can I use this with Terraform workspaces?**  
+A: Yes, use different secret names per workspace and inject accordingly.
+
+**Q: Does this support automatic secret generation?**  
+A: No, but pair with AWS Lambda or AWS Systems Manager Parameter Store for generation.
+
+**Q: What about secret rotation?**  
+A: Configure `enable_rotation` and provide a Lambda ARN. Rotation happens independently of Terraform.
 
 ## Contributing
 
@@ -394,24 +287,6 @@ If migrating from a **secret-handling module** (e.g., Vault integration):
 3. Update README for user-facing changes
 4. No secret-related features — keep module focused on infrastructure only
 
-## FAQ
-
-**Q: How do I deploy without manually running AWS CLI?**
-A: Use a Lambda function, CI/CD pipeline, or Kubernetes operator (see examples above).
-
-**Q: What if I need secrets at `terraform apply` time?**
-A: This module doesn't support that. Use a separate, temporary secret-injection step after `terraform apply`.
-
-**Q: Can I use this with Terraform workspaces?**
-A: Yes, use different secret names per workspace and inject accordingly.
-
-**Q: Does this support automatic secret generation?**
-A: No, but pair with AWS Lambda or AWS Systems Manager Parameter Store for generation.
-
-**Q: What about secret rotation?**
-A: Configure `enable_rotation` and provide a Lambda ARN. Rotation happens independently of Terraform.
-
 ## License
 
 MIT
-````
